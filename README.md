@@ -45,24 +45,7 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 
 ## Quick Start
 
-### Minimal Config (No LLM filtering)
-
-```json
-{
-  "mcpServers": {
-    "gateway": {
-      "command": "npx",
-      "args": ["-y", "utcp-mcp-gateway"],
-      "env": {
-        "MCP_URL": "https://mcp.context7.com/mcp",
-        "MCP_NAME": "context7"
-      }
-    }
-  }
-}
-```
-
-### Full Config (With LLM filtering)
+**Zero config files needed!** Just add to Claude Desktop:
 
 ```json
 {
@@ -82,7 +65,13 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 }
 ```
 
-> **Tip:** If using OpenAI, `LLM_BASE_URL` can be omitted (defaults to OpenAI).
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MCP_URL` | | MCP server URL |
+| `MCP_NAME` | | MCP namespace |
+| `LLM_API_KEY` | For filtering | Any OpenAI-compatible API key |
+| `LLM_BASE_URL` | For filtering | API endpoint (default: OpenAI) |
+| `LLM_MODEL` | For filtering | Model name (default: gpt-4o-mini) |
 
 That's it! Restart Claude Desktop and try: *"Search for React useState examples"*
 
@@ -172,24 +161,7 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 
 ## 快速开始
 
-### 最简配置（不带 LLM 过滤）
-
-```json
-{
-  "mcpServers": {
-    "gateway": {
-      "command": "npx",
-      "args": ["-y", "utcp-mcp-gateway"],
-      "env": {
-        "MCP_URL": "https://mcp.context7.com/mcp",
-        "MCP_NAME": "context7"
-      }
-    }
-  }
-}
-```
-
-### 完整配置（带 LLM 过滤）
+**零配置文件！** 直接添加到 Claude Desktop：
 
 ```json
 {
@@ -209,7 +181,13 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 }
 ```
 
-> **提示：** 如果用 OpenAI，可以省略 `LLM_BASE_URL`（默认就是 OpenAI）。
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `MCP_URL` | ✅ | MCP 服务器地址 |
+| `MCP_NAME` | ✅ | MCP 命名空间 |
+| `LLM_API_KEY` | 过滤用 | 任意 OpenAI 兼容的 API Key |
+| `LLM_BASE_URL` | 过滤用 | API 端点（默认 OpenAI）|
+| `LLM_MODEL` | 过滤用 | 模型名称（默认 gpt-4o-mini）|
 
 配置好后重启 Claude Desktop，试试：*"搜索 React useState 用法"*
 
