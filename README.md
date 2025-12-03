@@ -43,6 +43,17 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 
 **Result: $9,536/year savings** ([benchmark source](https://github.com/imran31415/codemode_python_benchmark))
 
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| 🔌 **Universal MCP** | Connect any HTTP or stdio MCP server |
+| 🧠 **LLM Filtering** | Intelligent summarization (97% response reduction!) |
+| 🔍 **Progressive Discovery** | `search_tools` - find tools without loading all 500 definitions |
+| ⚡ **Code Mode** | Execute TypeScript tool chains in one call |
+| 🔒 **Secure Sandbox** | Code runs in isolated environment |
+| 📦 **Zero Config** | Environment variables only, no config files |
+
 ## Quick Start
 
 **Zero config files needed!** Just add to Claude Desktop config:
@@ -108,16 +119,38 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 
 That's it! Restart Claude Desktop and try: *"Search for React useState examples"*
 
-## Features
+## How It Works
 
-| Feature | Description |
-|---------|-------------|
-| 🔌 **Universal MCP** | Connect any HTTP or stdio MCP server |
-| 🧠 **LLM Filtering** | Intelligent summarization (97% response reduction!) |
-| 🔍 **Progressive Discovery** | `search_tools` - find tools without loading all 500 definitions |
-| ⚡ **Code Mode** | Execute TypeScript tool chains in one call |
-| 🔒 **Secure Sandbox** | Code runs in isolated environment |
-| 📦 **Zero Config** | Environment variables only, no config files |
+```
+┌──────────────┐     ┌─────────────────────────────────┐     ┌─────────────┐
+│   Your AI    │────▶│      utcp-mcp-gateway           │────▶│ Any MCP     │
+│ (Claude etc) │     │  ┌─────────┐  ┌─────────────┐   │     │ (Context7)  │
+└──────────────┘     │  │  UTCP   │  │ LLM Filter  │   │     └─────────────┘
+                     │  │ search  │  │ 10K→300char │   │
+                     │  └─────────┘  └─────────────┘   │
+                     └─────────────────────────────────┘
+```
+
+**Gateway exposes 4 tools to your AI:**
+
+| Tool | Parameters | What it does |
+|------|------------|--------------|
+| `search_tools` | `query`, `limit` | Find tools by keyword. Returns only relevant tools instead of 500+ definitions |
+| `list_tools` | - | List all registered tools from connected MCPs |
+| `call_tool` | `tool_name`, `arguments` | Call any tool. Response is filtered by LLM (97% smaller!) |
+| `call_tool_chain` | `code` | Execute TypeScript code that calls multiple tools in one shot |
+
+### Example Flow
+
+```
+User: "How do I use React useState?"
+
+1. AI calls search_tools("react")        → Returns 2 relevant tools
+2. AI calls call_tool("get-library-docs", {topic: "useState"})
+3. Gateway fetches 10,000 chars from Context7
+4. LLM Filter summarizes to 300 chars    → 97% token saved!
+5. AI receives concise answer
+```
 
 ## Token Savings Benchmarks
 
@@ -152,39 +185,6 @@ MCP_NAMES=context7,deepwiki
 | `ENABLE_LLM_FILTER` | true | Enable/disable filtering |
 | `MAX_RESPONSE_CHARS` | 2000 | Max response length |
 
-## How It Works
-
-```
-┌──────────────┐     ┌─────────────────────────────────┐     ┌─────────────┐
-│   Your AI    │────▶│      utcp-mcp-gateway           │────▶│ Any MCP     │
-│ (Claude etc) │     │  ┌─────────┐  ┌─────────────┐   │     │ (Context7)  │
-└──────────────┘     │  │  UTCP   │  │ LLM Filter  │   │     └─────────────┘
-                     │  │ search  │  │ 10K→300char │   │
-                     │  └─────────┘  └─────────────┘   │
-                     └─────────────────────────────────┘
-```
-
-**Gateway exposes 4 tools to your AI:**
-
-| Tool | Parameters | What it does |
-|------|------------|--------------|
-| `search_tools` | `query`, `limit` | Find tools by keyword. Returns only relevant tools instead of 500+ definitions |
-| `list_tools` | - | List all registered tools from connected MCPs |
-| `call_tool` | `tool_name`, `arguments` | Call any tool. Response is filtered by LLM (97% smaller!) |
-| `call_tool_chain` | `code` | Execute TypeScript code that calls multiple tools in one shot |
-
-### Example Flow
-
-```
-User: "How do I use React useState?"
-
-1. AI calls search_tools("react")        → Returns 2 relevant tools
-2. AI calls call_tool("get-library-docs", {topic: "useState"})
-3. Gateway fetches 10,000 chars from Context7
-4. LLM Filter summarizes to 300 chars    → 97% token saved!
-5. AI receives concise answer
-```
-
 ---
 
 <a name="中文"></a>
@@ -215,6 +215,17 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 ```
 
 **结果：每年节省 $9,536** ([基准测试来源](https://github.com/imran31415/codemode_python_benchmark))
+
+## 核心功能
+
+| 功能 | 说明 |
+|------|------|
+| 🔌 **通用 MCP** | 连接任意 HTTP 或 stdio MCP |
+| 🧠 **LLM 过滤** | 智能摘要（响应缩小 97%！）|
+| 🔍 **渐进式发现** | `search_tools` - 按需搜索，无需加载全部 500 个工具 |
+| ⚡ **Code Mode** | 一次调用执行 TypeScript 代码链 |
+| 🔒 **安全沙箱** | 代码在隔离环境运行 |
+| 📦 **零配置** | 只需环境变量，无需配置文件 |
 
 ## 快速开始
 
@@ -313,17 +324,6 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 4. LLM 过滤器摘要为 300 字符           → 节省 97% Token！
 5. AI 收到简洁答案
 ```
-
-## 核心功能
-
-| 功能 | 说明 |
-|------|------|
-| 🔌 **通用 MCP** | 连接任意 HTTP 或 stdio MCP |
-| 🧠 **LLM 过滤** | 智能摘要（响应缩小 97%！）|
-| 🔍 **渐进式发现** | `search_tools` - 按需搜索，无需加载全部 500 个工具 |
-| ⚡ **Code Mode** | 一次调用执行 TypeScript 代码链 |
-| 🔒 **安全沙箱** | 代码在隔离环境运行 |
-| 📦 **零配置** | 只需环境变量，无需配置文件 |
 
 ## Token 节省实测
 
