@@ -48,7 +48,13 @@ export class LlmFilter {
         messages: [
           {
             role: 'system',
-            content: `你是一个专业的信息提取助手。请将以下内容精简为不超过 ${this.filterConfig.maxResponseChars} 字符的摘要，保留最关键的信息。只输出摘要内容，不要解释。`,
+            content: `你是一个专业的信息提取助手。请将以下内容精简为不超过 ${this.filterConfig.maxResponseChars} 字符的摘要。
+
+要求：
+1. 保留最关键的信息
+2. 如果原始内容是 JSON，请输出精简后的 JSON 结构
+3. 保持关键字段名称不变（如 id, name, libraryId 等）
+4. 只输出摘要内容，不要解释`,
           },
           {
             role: 'user',

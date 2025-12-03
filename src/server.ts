@@ -18,6 +18,7 @@ export class GatewayServer {
   private utcpClient: CodeModeUtcpClient | null = null;
   private llmFilter: LlmFilter;
   private config: Config;
+  private capabilitySummary: string = '';
 
   constructor(config: Config) {
     this.config = config;
@@ -32,13 +33,16 @@ export class GatewayServer {
   }
 
   private setupHandlers() {
-    // 列出工具
+    // 列出工具（动态生成带能力描述的工具定义）
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      // 动态获取能力摘要
+      const summary = this.capabilitySummary || '（服务尚未初始化）';
+
       return {
         tools: [
           {
             name: 'search_tools',
-            description: '搜索可用的工具（渐进式发现）',
+            description: `搜索可用的工具（渐进式发现）。${summary}`,
             inputSchema: {
               type: 'object',
               properties: {
@@ -50,30 +54,52 @@ export class GatewayServer {
           },
           {
             name: 'list_tools',
-            description: '列出所有已注册的工具',
+            description: `列出所有已注册的工具。${summary}`,
             inputSchema: { type: 'object', properties: {} },
           },
           {
-            name: 'call_tool',
-            description: '调用工具并返回过滤后的结果',
+            name: 'tool_info',
+            description: '获取工具的详细 TypeScript 接口定义',
             inputSchema: {
               type: 'object',
               properties: {
                 tool_name: { type: 'string', description: '工具名称' },
-                arguments: { type: 'object', description: '工具参数' },
-                context: { type: 'string', description: '上下文说明' },
               },
               required: ['tool_name'],
             },
           },
           {
             name: 'call_tool_chain',
-            description: '执行 TypeScript 代码链',
+            description: `执行 TypeScript 代码链。工具已注册为全局对象，直接用 await manual.tool(args) 调用。
+
+## 可用运行时变量
+- __interfaces: 所有工具的 TypeScript 接口定义
+- __getToolInterface(name): 获取特定工具接口
+- console.log/error/warn: 输出会被捕获并返回
+
+## 建议流程
+1. 先 console.log(__interfaces) 了解接口
+2. 调用工具并 console.log(result) 查看返回结构
+3. 根据实际结构处理数据
+
+## filter_response 参数使用场景
+- false（默认）：保留原始 JSON 结构，适合后续代码处理
+- true：使用 LLM 摘要，适合结果直接展示给用户或输出过大时
+
+## 示例
+\`\`\`typescript
+// 不要用 import/require，工具已是全局对象
+const result = await context7.context7_resolve_library_id({ libraryName: "react" });
+console.log(result);  // 先看结构
+return result;  // 再处理
+\`\`\``,
             inputSchema: {
               type: 'object',
               properties: {
-                code: { type: 'string', description: 'TypeScript 代码' },
+                code: { type: 'string', description: 'TypeScript 代码，使用 await manual.tool(args) 调用工具' },
                 timeout: { type: 'number', description: '超时时间(ms)', default: 30000 },
+                max_output_size: { type: 'number', description: '最大输出字符数', default: 50000 },
+                filter_response: { type: 'boolean', description: '是否使用 LLM 摘要结果（默认 false 保留原始结构）', default: false },
               },
               required: ['code'],
             },
@@ -94,17 +120,15 @@ export class GatewayServer {
           case 'list_tools':
             return await this.listTools();
 
-          case 'call_tool':
-            return await this.callTool(
-              args?.tool_name as string,
-              args?.arguments as Record<string, unknown>,
-              args?.context as string
-            );
+          case 'tool_info':
+            return await this.toolInfo(args?.tool_name as string);
 
           case 'call_tool_chain':
             return await this.callToolChain(
               args?.code as string,
-              args?.timeout as number
+              args?.timeout as number,
+              args?.max_output_size as number,
+              args?.filter_response as boolean
             );
 
           default:
@@ -125,15 +149,58 @@ export class GatewayServer {
       
       // 注册配置的 MCP 服务
       for (const mcp of this.config.mcps) {
-        await this.registerMcp(mcp);
+        await this.registerMcp(mcp, this.utcpClient);
       }
+
+      // 生成能力摘要
+      await this.updateCapabilitySummary();
     }
     return this.utcpClient;
   }
 
-  private async registerMcp(mcp: McpConfig): Promise<void> {
-    const client = await this.getUtcpClient();
-    
+  /**
+   * 从已注册的工具生成能力摘要
+   */
+  private async updateCapabilitySummary(): Promise<void> {
+    if (!this.utcpClient) return;
+
+    const tools = await this.utcpClient.getTools();
+    if (tools.length === 0) {
+      this.capabilitySummary = '';
+      return;
+    }
+
+    // 按 manual 分组
+    const byManual = new Map<string, Array<{ name: string; description: string }>>();
+    for (const tool of tools) {
+      // tool.name 格式: "manual.server.tool" 或 "manual.tool"
+      const parts = tool.name.split('.');
+      const manual = parts[0];
+      const toolName = parts.slice(1).join('.');
+
+      if (!byManual.has(manual)) {
+        byManual.set(manual, []);
+      }
+      byManual.get(manual)!.push({
+        name: toolName,
+        description: tool.description,
+      });
+    }
+
+    // 生成摘要
+    const lines: string[] = ['已连接服务:'];
+    for (const [manual, toolList] of byManual) {
+      // 取前 2 个工具名
+      const toolNames = toolList.slice(0, 2).map(t => t.name).join(', ');
+      const suffix = toolList.length > 2 ? ` 等${toolList.length}个工具` : '';
+      lines.push(`- ${manual}: ${toolNames}${suffix}`);
+    }
+
+    this.capabilitySummary = lines.join('\n');
+    console.error(`[Gateway] 能力摘要已生成:\n${this.capabilitySummary}`);
+  }
+
+  private async registerMcp(mcp: McpConfig, client: CodeModeUtcpClient): Promise<void> {
     const mcpServerConfig = mcp.transport === 'http'
       ? {
           transport: 'http' as const,
@@ -161,6 +228,14 @@ export class GatewayServer {
     console.error(`[Gateway] Registered MCP: ${mcp.name}`);
   }
 
+  /**
+   * 将 UTCP 工具名转换为 TypeScript 函数名
+   * 例: "context7.context7.resolve-library-id" -> "context7_context7_resolve_library_id"
+   */
+  private utcpNameToTsName(name: string): string {
+    return name.replace(/[.-]/g, '_');
+  }
+
   private async searchTools(query: string, limit = 10) {
     const client = await this.getUtcpClient();
     const tools = await client.searchTools(query, limit);
@@ -168,10 +243,49 @@ export class GatewayServer {
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify(tools.map(t => ({
-          name: t.name,
-          description: t.description,
-        })), null, 2),
+        text: JSON.stringify({
+          tools: tools.map(t => ({
+            name: this.utcpNameToTsName(t.name),
+            description: t.description,
+            typescript_interface: client.toolToTypeScriptInterface(t),
+          }))
+        }, null, 2),
+      }],
+    };
+  }
+
+  private async toolInfo(toolName: string) {
+    const client = await this.getUtcpClient();
+    
+    // 先尝试直接查找
+    let tool = await client.getTool(toolName);
+    
+    if (!tool) {
+      // 遍历所有工具，使用多种格式匹配
+      const tools = await client.getTools();
+      const normalizedInput = this.utcpNameToTsName(toolName);
+      
+      const found = tools.find(t => {
+        const normalizedTool = this.utcpNameToTsName(t.name);
+        // 支持多种匹配方式
+        return t.name === toolName ||                    // 完全匹配
+               normalizedTool === toolName ||            // 原名已是转换格式
+               normalizedTool === normalizedInput;       // 都转换后比较
+      });
+      
+      if (!found) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: `Tool '${toolName}' not found` }) }],
+          isError: true,
+        };
+      }
+      tool = found;
+    }
+    
+    return {
+      content: [{
+        type: 'text',
+        text: client.toolToTypeScriptInterface(tool),
       }],
     };
   }
@@ -183,43 +297,51 @@ export class GatewayServer {
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify(tools.map(t => t.name), null, 2),
+        text: JSON.stringify({
+          tools: tools.map(t => this.utcpNameToTsName(t.name))
+        }, null, 2),
       }],
     };
   }
 
-  private async callTool(
-    toolName: string,
-    args: Record<string, unknown> = {},
-    context?: string
+  private async callToolChain(
+    code: string,
+    timeout = 30000,
+    maxOutputSize = 50000,
+    filterResponse = false
   ) {
     const client = await this.getUtcpClient();
-    const result = await client.callTool(toolName, args);
+    const { result, logs } = await client.callToolChain(code, timeout);
     
-    // 转换为字符串
-    const content = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+    // 构建完整结果（包含 logs 方便调试）
+    const fullResult = { success: true, result, logs };
+    const content = JSON.stringify(fullResult, null, 2);
     
-    // LLM 过滤
-    const filtered = await this.llmFilter.filter(content, context || `调用工具 ${toolName}`);
+    // 检查输出大小
+    if (content.length > maxOutputSize) {
+      const truncated = content.slice(0, maxOutputSize) + '\n...\n[max_output_size exceeded, 请在代码中过滤数据后再 return]';
+      return {
+        content: [{ type: 'text', text: truncated }],
+      };
+    }
+    
+    // 根据 filterResponse 参数决定是否过滤
+    if (filterResponse) {
+      const filtered = await this.llmFilter.filter(content, '代码执行结果');
+      return {
+        content: [{ type: 'text', text: filtered }],
+      };
+    }
     
     return {
-      content: [{ type: 'text', text: filtered }],
-    };
-  }
-
-  private async callToolChain(code: string, timeout = 30000) {
-    const client = await this.getUtcpClient();
-    const result = await client.callToolChain(code, timeout);
-    
-    const content = JSON.stringify(result, null, 2);
-    const filtered = await this.llmFilter.filter(content, '代码执行结果');
-    
-    return {
-      content: [{ type: 'text', text: filtered }],
+      content: [{ type: 'text', text: content }],
     };
   }
 
   async run(): Promise<void> {
+    // 先初始化 UTCP 客户端并注册服务，生成能力摘要
+    await this.getUtcpClient();
+
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     console.error('[Gateway] UTCP Gateway started');
