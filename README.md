@@ -45,7 +45,24 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 
 ## Quick Start
 
-**Zero config files!** Just add to Claude Desktop:
+### Minimal Config (No LLM filtering)
+
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "npx",
+      "args": ["-y", "utcp-mcp-gateway"],
+      "env": {
+        "MCP_URL": "https://mcp.context7.com/mcp",
+        "MCP_NAME": "context7"
+      }
+    }
+  }
+}
+```
+
+### Full Config (With LLM filtering)
 
 ```json
 {
@@ -56,14 +73,18 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
       "env": {
         "MCP_URL": "https://mcp.context7.com/mcp",
         "MCP_NAME": "context7",
-        "LLM_API_KEY": "sk-xxx"
+        "LLM_API_KEY": "sk-xxx",
+        "LLM_BASE_URL": "https://api.openai.com/v1",
+        "LLM_MODEL": "gpt-4o-mini"
       }
     }
   }
 }
 ```
 
-That's it! Your AI now has access to Context7 with smart filtering.
+> **Tip:** If using OpenAI, `LLM_BASE_URL` can be omitted (defaults to OpenAI).
+
+That's it! Restart Claude Desktop and try: *"Search for React useState examples"*
 
 ## Features
 
@@ -151,7 +172,24 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 
 ## 快速开始
 
-**零配置文件！** 直接添加到 Claude Desktop：
+### 最简配置（不带 LLM 过滤）
+
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "npx",
+      "args": ["-y", "utcp-mcp-gateway"],
+      "env": {
+        "MCP_URL": "https://mcp.context7.com/mcp",
+        "MCP_NAME": "context7"
+      }
+    }
+  }
+}
+```
+
+### 完整配置（带 LLM 过滤）
 
 ```json
 {
@@ -162,14 +200,18 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
       "env": {
         "MCP_URL": "https://mcp.context7.com/mcp",
         "MCP_NAME": "context7",
-        "LLM_API_KEY": "sk-xxx"
+        "LLM_API_KEY": "sk-xxx",
+        "LLM_BASE_URL": "https://api.openai.com/v1",
+        "LLM_MODEL": "gpt-4o-mini"
       }
     }
   }
 }
 ```
 
-就这样！你的 AI 现在可以使用带智能过滤的 Context7 了。
+> **提示：** 如果用 OpenAI，可以省略 `LLM_BASE_URL`（默认就是 OpenAI）。
+
+配置好后重启 Claude Desktop，试试：*"搜索 React useState 用法"*
 
 ## 核心功能
 
