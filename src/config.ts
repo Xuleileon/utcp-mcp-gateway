@@ -103,8 +103,14 @@ export function validateConfig(config: Config): void {
   }
 
   for (const mcp of config.mcps) {
-    if (!mcp.url) {
-      throw new Error(`MCP "${mcp.name}" 缺少 URL 配置`);
+    if (mcp.transport === 'stdio') {
+      if (!mcp.command) {
+        throw new Error(`MCP "${mcp.name}" 是 stdio 模式但缺少 MCP_COMMAND 配置`);
+      }
+    } else {
+      if (!mcp.url) {
+        throw new Error(`MCP "${mcp.name}" 是 http 模式但缺少 MCP_URL 配置`);
+      }
     }
   }
 
