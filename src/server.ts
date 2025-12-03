@@ -98,7 +98,7 @@ return result;  // 再处理
               properties: {
                 code: { type: 'string', description: 'TypeScript 代码，使用 await manual.tool(args) 调用工具' },
                 timeout: { type: 'number', description: '超时时间(ms)', default: 30000 },
-                max_output_size: { type: 'number', description: '最大输出字符数', default: 50000 },
+                max_output_size: { type: 'number', description: '最大输出字符数', default: 5000 },
                 filter_response: { type: 'boolean', description: '是否使用 LLM 智能摘要（默认 false）', default: false },
                 purpose: { type: 'string', description: '用户的请求目的（启用 filter_response 时，LLM 会根据此目的提取相关信息）' },
               },
@@ -309,7 +309,7 @@ return result;  // 再处理
   private async callToolChain(
     code: string,
     timeout = 30000,
-    maxOutputSize = 50000,
+    maxOutputSize = 5000,
     filterResponse = false,
     purpose?: string
   ) {
