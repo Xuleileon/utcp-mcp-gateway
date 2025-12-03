@@ -161,21 +161,23 @@ That's it! Restart Claude Desktop and try: *"Search for React useState examples"
 
 | Tool | Parameters | What it does |
 |------|------------|--------------|
-| `search_tools` | `query`, `limit` | Find tools by keyword. Returns only relevant tools instead of 500+ definitions |
+| `search_tools` | `query`, `limit` | Find tools by keyword. Returns tools with TypeScript interfaces |
 | `list_tools` | - | List all registered tools from connected MCPs |
-| `call_tool` | `tool_name`, `arguments` | Call any tool. Response is filtered by LLM (97% smaller!) |
-| `call_tool_chain` | `code` | Execute TypeScript code that calls multiple tools in one shot |
+| `tool_info` | `tool_name` | Get detailed TypeScript interface for a specific tool |
+| `call_tool_chain` | `code`, `timeout`, `max_output_size`, `filter_response` | Execute TypeScript code that calls multiple tools in one shot |
 
 ### Example Flow
 
 ```
 User: "How do I use React useState?"
 
-1. AI calls search_tools("react")        → Returns 2 relevant tools
-2. AI calls call_tool("get-library-docs", {topic: "useState"})
-3. Gateway fetches 10,000 chars from Context7
-4. LLM Filter summarizes to 300 chars    → 97% token saved!
-5. AI receives concise answer
+1. AI calls search_tools("react")        → Returns tools with TypeScript interfaces
+2. AI calls call_tool_chain with code:
+   const id = await context7.context7_resolve_library_id({ libraryName: "react" });
+   const docs = await context7.context7_get_library_docs({ libraryId: id, topic: "useState" });
+   return docs;
+3. Gateway executes code and returns result
+4. AI receives structured response
 ```
 
 ## Token Savings Benchmarks
@@ -196,9 +198,24 @@ MCP_NAME=context7
 
 ### Multiple MCPs
 
+Use semicolons to separate multiple services:
+
 ```bash
-MCP_URLS=https://mcp.context7.com/mcp,https://mcp.deepwiki.com/mcp
-MCP_NAMES=context7,deepwiki
+MCP_URL="https://mcp.context7.com/mcp;https://mcp.deepwiki.com/mcp"
+MCP_NAME="context7;deepwiki"
+MCP_TRANSPORT="http;http"
+```
+
+Or in Claude Desktop config:
+
+```json
+{
+  "env": {
+    "MCP_URL": "https://mcp.context7.com/mcp;https://mcp.deepwiki.com/mcp",
+    "MCP_NAME": "context7;deepwiki",
+    "MCP_TRANSPORT": "http;http"
+  }
+}
 ```
 
 ### LLM Settings
@@ -356,21 +373,23 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 
 | 工具 | 参数 | 作用 |
 |------|------|------|
-| `search_tools` | `query`, `limit` | 按关键词搜索工具，只返回相关的，不用加载 500+ 定义 |
+| `search_tools` | `query`, `limit` | 按关键词搜索工具，返回带 TypeScript 接口的工具列表 |
 | `list_tools` | - | 列出所有已注册的工具 |
-| `call_tool` | `tool_name`, `arguments` | 调用任意工具，响应经 LLM 过滤（缩小 97%！）|
-| `call_tool_chain` | `code` | 执行 TypeScript 代码，一次调用多个工具 |
+| `tool_info` | `tool_name` | 获取特定工具的详细 TypeScript 接口 |
+| `call_tool_chain` | `code`, `timeout`, `max_output_size`, `filter_response` | 执行 TypeScript 代码，一次调用多个工具 |
 
 ### 调用流程示例
 
 ```
 用户: "React useState 怎么用？"
 
-1. AI 调用 search_tools("react")        → 返回 2 个相关工具
-2. AI 调用 call_tool("get-library-docs", {topic: "useState"})
-3. Gateway 从 Context7 获取 10,000 字符
-4. LLM 过滤器摘要为 300 字符           → 节省 97% Token！
-5. AI 收到简洁答案
+1. AI 调用 search_tools("react")        → 返回带 TypeScript 接口的工具
+2. AI 调用 call_tool_chain 执行代码：
+   const id = await context7.context7_resolve_library_id({ libraryName: "react" });
+   const docs = await context7.context7_get_library_docs({ libraryId: id, topic: "useState" });
+   return docs;
+3. Gateway 执行代码并返回结果
+4. AI 收到结构化响应
 ```
 
 ## Token 节省实测
@@ -391,9 +410,24 @@ MCP_NAME=context7
 
 ### 多个 MCP
 
+用分号分隔多个服务：
+
 ```bash
-MCP_URLS=https://mcp.context7.com/mcp,https://mcp.deepwiki.com/mcp
-MCP_NAMES=context7,deepwiki
+MCP_URL="https://mcp.context7.com/mcp;https://mcp.deepwiki.com/mcp"
+MCP_NAME="context7;deepwiki"
+MCP_TRANSPORT="http;http"
+```
+
+或在 Claude Desktop 配置中：
+
+```json
+{
+  "env": {
+    "MCP_URL": "https://mcp.context7.com/mcp;https://mcp.deepwiki.com/mcp",
+    "MCP_NAME": "context7;deepwiki",
+    "MCP_TRANSPORT": "http;http"
+  }
+}
 ```
 
 ### LLM 配置
