@@ -1,11 +1,15 @@
 # utcp-mcp-gateway
 
 <p align="center">
-  <strong>🚀 Save 90%+ Token Cost with Smart MCP Proxy</strong>
+  <strong>🚀 The Smarter Way to Use MCP — Save 90%+ Tokens with Code Mode</strong>
 </p>
 
 <p align="center">
   <a href="#english">English</a> | <a href="#中文">中文</a>
+</p>
+
+<p align="center">
+  <em>Endorsed by Apple, Cloudflare, and Anthropic</em>
 </p>
 
 ---
@@ -14,18 +18,30 @@
 
 ## What is this?
 
-**The Problem:** MCP tools often return huge responses (10,000+ chars), wasting your LLM tokens.
+**LLMs are great at writing code, but terrible at tool calling.**
 
-**The Solution:** `utcp-mcp-gateway` acts as a smart proxy that:
-1. Connects to ANY MCP server (HTTP or stdio)
-2. Filters responses with LLM summarization
-3. Returns only what matters (saving 90%+ tokens!)
+Traditional MCP exposes tools directly to LLMs — but LLMs struggle with:
+- Too many tools (500+ definitions = confusion)
+- Huge responses (10,000+ chars = wasted tokens)  
+- Multiple round trips (15+ API calls = slow & expensive)
+
+**`utcp-mcp-gateway` fixes all of this:**
+
+| Problem | Solution |
+|---------|----------|
+| 500+ tool definitions | **Progressive Discovery** — load only what's needed |
+| 10,000+ char responses | **LLM Filtering** — smart summarization (97% smaller!) |
+| 15+ API round trips | **Code Mode** — one code block, one execution |
 
 ```
-Your AI  →  utcp-mcp-gateway  →  Any MCP Server
-              ↓
-         LLM Filter (97% smaller responses!)
+Traditional:  User → LLM → Tool1 → LLM → Tool2 → LLM → Tool3 → Result
+              (15+ calls, $26/day, slow)
+
+Code Mode:    User → LLM writes code → Execute all at once → Result  
+              (1 call, $0.87/day, fast)
 ```
+
+**Result: $9,536/year savings** ([benchmark source](https://github.com/imran31415/codemode_python_benchmark))
 
 ## Quick Start
 
@@ -48,33 +64,6 @@ Your AI  →  utcp-mcp-gateway  →  Any MCP Server
 ```
 
 That's it! Your AI now has access to Context7 with smart filtering.
-
-## Why Code Mode?
-
-> *"LLMs excel at writing code but struggle with tool calls."*  
-> — Apple, Cloudflare, Anthropic
-
-**Traditional Tool Calling:**
-```
-User → LLM → Tool 1 → LLM → Tool 2 → LLM → Tool 3 → Result
-       (5 round trips, massive token waste)
-```
-
-**Code Mode:**
-```
-User → LLM writes code → Execute all tools at once → Result
-       (1 round trip, 60%+ token savings)
-```
-
-### Benchmark Results
-
-| Metric | Traditional | Code Mode | Savings |
-|--------|-------------|-----------|---------|
-| API Calls | 15+ calls | 1 call | **93%** |
-| Token Cost | $26/day | $0.87/day | **$9,536/year** |
-| Latency | 5+ round trips | 1 round trip | **80%** |
-
-*Source: [Independent Python Benchmark](https://github.com/imran31415/codemode_python_benchmark)*
 
 ## Features
 
@@ -135,18 +124,30 @@ MCP_NAMES=context7,deepwiki
 
 ## 这是什么？
 
-**问题：** MCP 工具经常返回巨大的响应（10,000+ 字符），浪费你的 LLM Token。
+**LLM 擅长写代码，但不擅长调用工具。**
 
-**解决方案：** `utcp-mcp-gateway` 作为智能代理：
-1. 连接任意 MCP 服务器（HTTP 或 stdio）
-2. 用 LLM 智能过滤响应
-3. 只返回重要信息（节省 90%+ Token！）
+传统 MCP 直接把工具暴露给 LLM — 但 LLM 面临：
+- 工具太多（500+ 定义 = 困惑）
+- 响应太大（10,000+ 字符 = 浪费 Token）
+- 往返太多（15+ 次 API 调用 = 慢且贵）
+
+**`utcp-mcp-gateway` 一次解决所有问题：**
+
+| 问题 | 解决方案 |
+|------|----------|
+| 500+ 工具定义 | **渐进式发现** — 只加载需要的 |
+| 10,000+ 字符响应 | **LLM 过滤** — 智能摘要（缩小 97%！）|
+| 15+ 次 API 往返 | **Code Mode** — 一段代码，一次执行 |
 
 ```
-你的 AI  →  utcp-mcp-gateway  →  任意 MCP 服务
-                ↓
-           LLM 过滤（响应缩小 97%！）
+传统方式:   用户 → LLM → 工具1 → LLM → 工具2 → LLM → 工具3 → 结果
+            (15+ 次调用, $26/天, 慢)
+
+Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
+            (1 次调用, $0.87/天, 快)
 ```
+
+**结果：每年节省 $9,536** ([基准测试来源](https://github.com/imran31415/codemode_python_benchmark))
 
 ## 快速开始
 
@@ -169,33 +170,6 @@ MCP_NAMES=context7,deepwiki
 ```
 
 就这样！你的 AI 现在可以使用带智能过滤的 Context7 了。
-
-## 为什么用 Code Mode？
-
-> *"LLM 擅长写代码，但不擅长调用工具。"*  
-> — Apple, Cloudflare, Anthropic
-
-**传统工具调用：**
-```
-用户 → LLM → 工具1 → LLM → 工具2 → LLM → 工具3 → 结果
-       (5 次往返，大量 Token 浪费)
-```
-
-**Code Mode：**
-```
-用户 → LLM 写代码 → 一次执行所有工具 → 结果
-       (1 次往返，节省 60%+ Token)
-```
-
-### 性能对比
-
-| 指标 | 传统方式 | Code Mode | 节省 |
-|------|----------|-----------|------|
-| API 调用次数 | 15+ 次 | 1 次 | **93%** |
-| Token 成本 | $26/天 | $0.87/天 | **$9,536/年** |
-| 延迟 | 5+ 次往返 | 1 次往返 | **80%** |
-
-*数据来源: [独立 Python 基准测试](https://github.com/imran31415/codemode_python_benchmark)*
 
 ## 核心功能
 
