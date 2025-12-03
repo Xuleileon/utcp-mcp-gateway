@@ -45,7 +45,9 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 
 ## Quick Start
 
-**Zero config files needed!** Just add to Claude Desktop:
+**Zero config files needed!** Just add to Claude Desktop config:
+
+### Mode 1: HTTP MCP (Remote)
 
 ```json
 {
@@ -65,10 +67,41 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 }
 ```
 
+### Mode 2: stdio MCP (Local)
+
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "npx",
+      "args": ["-y", "utcp-mcp-gateway"],
+      "env": {
+        "MCP_COMMAND": "npx",
+        "MCP_ARGS": "-y,@anthropic/mcp-server-filesystem",
+        "MCP_NAME": "filesystem",
+        "MCP_TRANSPORT": "stdio",
+        "LLM_API_KEY": "sk-xxx"
+      }
+    }
+  }
+}
+```
+
+> ⚠️ **Windows Users:** Use `cmd /c npx` instead of `npx`:
+> ```json
+> "command": "cmd",
+> "args": ["/c", "npx", "-y", "utcp-mcp-gateway"]
+> ```
+
+### Environment Variables
+
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `MCP_URL` | | MCP server URL |
-| `MCP_NAME` | | MCP namespace |
+| `MCP_URL` | HTTP mode | MCP server URL |
+| `MCP_COMMAND` | stdio mode | Command to run MCP |
+| `MCP_ARGS` | stdio mode | Arguments (comma-separated) |
+| `MCP_NAME` | ✅ | MCP namespace |
+| `MCP_TRANSPORT` | No | `http` (default) or `stdio` |
 | `LLM_API_KEY` | For filtering | Any OpenAI-compatible API key |
 | `LLM_BASE_URL` | For filtering | API endpoint (default: OpenAI) |
 | `LLM_MODEL` | For filtering | Model name (default: gpt-4o-mini) |
@@ -161,7 +194,9 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 
 ## 快速开始
 
-**零配置文件！** 直接添加到 Claude Desktop：
+**零配置文件！** 直接添加到 Claude Desktop 配置：
+
+### 模式 1：HTTP MCP（远程）
 
 ```json
 {
@@ -181,10 +216,41 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 }
 ```
 
+### 模式 2：stdio MCP（本地）
+
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "npx",
+      "args": ["-y", "utcp-mcp-gateway"],
+      "env": {
+        "MCP_COMMAND": "npx",
+        "MCP_ARGS": "-y,@anthropic/mcp-server-filesystem",
+        "MCP_NAME": "filesystem",
+        "MCP_TRANSPORT": "stdio",
+        "LLM_API_KEY": "sk-xxx"
+      }
+    }
+  }
+}
+```
+
+> ⚠️ **Windows 用户：** 使用 `cmd /c npx` 代替 `npx`：
+> ```json
+> "command": "cmd",
+> "args": ["/c", "npx", "-y", "utcp-mcp-gateway"]
+> ```
+
+### 环境变量
+
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `MCP_URL` | ✅ | MCP 服务器地址 |
+| `MCP_URL` | HTTP 模式 | MCP 服务器 URL |
+| `MCP_COMMAND` | stdio 模式 | 运行 MCP 的命令 |
+| `MCP_ARGS` | stdio 模式 | 参数（逗号分隔）|
 | `MCP_NAME` | ✅ | MCP 命名空间 |
+| `MCP_TRANSPORT` | 否 | `http`（默认）或 `stdio` |
 | `LLM_API_KEY` | 过滤用 | 任意 OpenAI 兼容的 API Key |
 | `LLM_BASE_URL` | 过滤用 | API 端点（默认 OpenAI）|
 | `LLM_MODEL` | 过滤用 | 模型名称（默认 gpt-4o-mini）|

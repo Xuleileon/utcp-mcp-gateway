@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // MCP 配置 schema
 const McpConfigSchema = z.object({
-  url: z.string().url(),
+  url: z.string().url().optional(),
   name: z.string(),
   transport: z.enum(['http', 'stdio']).default('http'),
   // stdio 配置
@@ -53,14 +53,29 @@ export function loadConfig(): Config {
   const mcpTransports = process.env.MCP_TRANSPORTS?.split(',') || [process.env.MCP_TRANSPORT || 'http'];
   const mcpAuthTypes = process.env.MCP_AUTH_TYPES?.split(',') || [process.env.MCP_AUTH_TYPE || 'none'];
   const mcpAuthTokens = process.env.MCP_AUTH_TOKENS?.split(',') || [process.env.MCP_AUTH_TOKEN].filter(Boolean);
+  
+  // stdio 模式配置
+  const mcpCommands = process.env.MCP_COMMANDS?.split(',') || [process.env.MCP_COMMAND].filter(Boolean);
+  const mcpArgsArray = process.env.MCP_ARGS_LIST?.split(';') || [process.env.MCP_ARGS].filter(Boolean);
 
-  const mcps: McpConfig[] = mcpUrls.map((url, i) => ({
-    url: url!,
-    name: mcpNames[i] || `mcp-${i}`,
-    transport: (mcpTransports[i] || 'http') as 'http' | 'stdio',
-    authType: (mcpAuthTypes[i] || 'none') as 'none' | 'bearer' | 'api-key',
-    authToken: mcpAuthTokens[i],
-  }));
+  // 确定 MCP 数量
+  const mcpCount = Math.max(mcpUrls.length, mcpCommands.length, mcpNames.length);
+  
+  const mcps: McpConfig[] = [];
+  for (let i = 0; i < mcpCount; i++) {
+    const transport = (mcpTransports[i] || 'http') as 'http' | 'stdio';
+    const isStdio = transport === 'stdio' || mcpCommands[i];
+    
+    mcps.push({
+      url: mcpUrls[i],
+      name: mcpNames[i] || `mcp-${i}`,
+      transport: isStdio ? 'stdio' : 'http',
+      command: mcpCommands[i],
+      args: mcpArgsArray[i]?.split(','),
+      authType: (mcpAuthTypes[i] || 'none') as 'none' | 'bearer' | 'api-key',
+      authToken: mcpAuthTokens[i],
+    });
+  }
 
   // 解析 LLM 配置
   const llm: LlmConfig = {
