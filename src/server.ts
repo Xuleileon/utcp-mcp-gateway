@@ -45,7 +45,7 @@ export class GatewayServer {
     this.server = new Server(
       { 
         name: 'universal-tools', 
-        version: '0.1.21',
+        version: '0.1.22',
       },
       { capabilities: { tools: {} } }
     );
@@ -318,10 +318,29 @@ ${summaryText}
         .map(n => n.trim())
         .filter(n => n && n !== 'none');
 
-      // 获取推荐工具的完整定义
-      const recommendedTools = recommendedNames
-        .map(name => this.toolFullDefs.get(name))
-        .filter((t): t is Tool => t !== undefined);
+      console.error(`[Gateway] 解析的工具名: ${recommendedNames.join(', ')}`);
+
+      // 获取推荐工具的完整定义（支持模糊匹配）
+      const recommendedTools: Tool[] = [];
+      for (const name of recommendedNames) {
+        // 先精确匹配
+        let tool = this.toolFullDefs.get(name);
+        
+        // 如果没找到，尝试模糊匹配（工具名包含推荐名，或推荐名包含工具名）
+        if (!tool) {
+          for (const [toolName, t] of this.toolFullDefs) {
+            if (toolName.includes(name) || name.includes(toolName)) {
+              tool = t;
+              console.error(`[Gateway] 模糊匹配: "${name}" -> "${toolName}"`);
+              break;
+            }
+          }
+        }
+        
+        if (tool) {
+          recommendedTools.push(tool);
+        }
+      }
 
       return {
         content: [{
