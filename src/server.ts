@@ -45,7 +45,7 @@ export class GatewayServer {
     this.server = new Server(
       { 
         name: 'universal-tools', 
-        version: '0.1.22',
+        version: '0.1.23',
       },
       { capabilities: { tools: {} } }
     );
@@ -270,9 +270,9 @@ export class GatewayServer {
       throw new Error('Router client not initialized');
     }
 
-    // 构建精简摘要文本
-    const summaryText = this.toolSummaries
-      .map(t => `- ${t.name}: ${t.brief}`)
+    // 使用全量描述（更准确的推荐）
+    const toolDescriptions = Array.from(this.toolFullDefs.entries())
+      .map(([name, tool]) => `- ${name}: ${tool.description || '(无描述)'}`)
       .join('\n');
 
     const model = this.config.router.model || this.config.llm.model;
@@ -283,21 +283,26 @@ export class GatewayServer {
         messages: [
           {
             role: 'system',
-            content: `你是一个工具推荐专家。根据用户的需求，从可用工具列表中选择最相关的工具。
+            content: `你是一个工具推荐专家。根据用户的需求，推荐最合适的工具。
 
 可用工具：
-${summaryText}
+${toolDescriptions}
 
-要求：
-1. 只返回工具名，用逗号分隔
-2. 最多返回 ${limit} 个工具
-3. 如果没有合适的工具，返回 "none"
-4. 只输出工具名，不要解释`
+推荐原则：
+1. 优先推荐最匹配用户需求的工具
+2. 如果需求涉及多个方面，可以推荐多个互补的工具
+3. 即使没有完全匹配，也可以推荐"可能有用"的工具
+4. 只有在完全没有相关工具时才返回 "none"
+
+输出格式：
+- 只返回工具名，用逗号分隔
+- 最多返回 ${limit} 个工具
+- 不要解释，只输出工具名`
           },
           { role: 'user', content: query }
         ],
         max_tokens: 200,
-        temperature: 0,
+        temperature: 0.3,
       });
 
       const resultText = response.choices[0]?.message?.content || 'none';
