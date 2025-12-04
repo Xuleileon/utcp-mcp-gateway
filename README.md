@@ -277,6 +277,38 @@ Use numbered environment variables for clear configuration:
 - Fuzzy matching for tool names in case LLM returns slightly different names
 - Pre-truncates large responses (>200k chars) before LLM summarization
 
+### OpenAPI Settings (v0.1.24+)
+
+Register REST APIs directly from OpenAPI/Swagger specs:
+
+```bash
+OPENAPI_1_NAME=petstore
+OPENAPI_1_URL=https://petstore.swagger.io/v2/swagger.json
+
+OPENAPI_2_NAME=my_api
+OPENAPI_2_URL=https://api.example.com/openapi.json
+OPENAPI_2_AUTH_TYPE=api-key
+OPENAPI_2_AUTH_TOKEN=sk-xxx
+OPENAPI_2_AUTH_VAR=Authorization
+OPENAPI_2_AUTH_LOCATION=header
+```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAPI_N_NAME` | ✅ | Tool source name |
+| `OPENAPI_N_URL` | ✅ | OpenAPI spec URL |
+| `OPENAPI_N_AUTH_TYPE` | ❌ | `api-key`, `bearer`, `basic`, or `none` |
+| `OPENAPI_N_AUTH_TOKEN` | ❌ | Auth token/key |
+| `OPENAPI_N_AUTH_VAR` | ❌ | Header name (default: `Authorization`) |
+| `OPENAPI_N_AUTH_LOCATION` | ❌ | `header`, `query`, or `cookie` |
+
+**How it works:**
+- Downloads and parses OpenAPI 2.0/3.0 specifications
+- Converts each operation to a UTCP tool
+- Tool name = operationId from OpenAPI spec
+- Tool description = summary or description from OpenAPI spec
+- Supports API Key, Bearer, Basic, and OAuth2 authentication
+
 ---
 
 <a name="中文"></a>
@@ -537,6 +569,38 @@ MCP_NAME=context7
 - LLM 不可用时回退到关键词搜索
 - 工具名模糊匹配，容错 LLM 返回格式不完全一致的情况
 - 超大响应（>200k 字符）预截断后再进行 LLM 摘要
+
+### OpenAPI 配置 (v0.1.24+)
+
+直接从 OpenAPI/Swagger 规范注册 REST API：
+
+```bash
+OPENAPI_1_NAME=petstore
+OPENAPI_1_URL=https://petstore.swagger.io/v2/swagger.json
+
+OPENAPI_2_NAME=my_api
+OPENAPI_2_URL=https://api.example.com/openapi.json
+OPENAPI_2_AUTH_TYPE=api-key
+OPENAPI_2_AUTH_TOKEN=sk-xxx
+OPENAPI_2_AUTH_VAR=Authorization
+OPENAPI_2_AUTH_LOCATION=header
+```
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `OPENAPI_N_NAME` | ✅ | 工具源名称 |
+| `OPENAPI_N_URL` | ✅ | OpenAPI 规范地址 |
+| `OPENAPI_N_AUTH_TYPE` | ❌ | `api-key`、`bearer`、`basic` 或 `none` |
+| `OPENAPI_N_AUTH_TOKEN` | ❌ | 认证令牌/密钥 |
+| `OPENAPI_N_AUTH_VAR` | ❌ | 头名称（默认 `Authorization`）|
+| `OPENAPI_N_AUTH_LOCATION` | ❌ | `header`、`query` 或 `cookie` |
+
+**工作原理：**
+- 下载并解析 OpenAPI 2.0/3.0 规范
+- 每个操作转换为一个 UTCP 工具
+- 工具名 = OpenAPI 规范中的 operationId
+- 工具描述 = OpenAPI 规范中的 summary 或 description
+- 支持 API Key、Bearer、Basic 和 OAuth2 认证
 
 ---
 

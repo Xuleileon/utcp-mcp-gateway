@@ -1,6 +1,6 @@
 {
   "name": "utcp-mcp-gateway",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "UTCP Gateway - Universal MCP proxy with LLM-powered response filtering",
   "type": "module",
   "main": "./dist/index.js",
@@ -38,6 +38,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@utcp/code-mode": "^1.0.5",
+    "@utcp/http": "^1.0.0",
     "@utcp/mcp": "^1.0.17",
     "@utcp/sdk": "^1.1.0",
     "openai": "^4.0.0",

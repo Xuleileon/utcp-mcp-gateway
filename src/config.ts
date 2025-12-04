@@ -38,9 +38,20 @@ const RouterConfigSchema = z.object({
   model: z.string().optional(),  // 不填则复用 LLM_MODEL
 });
 
+// OpenAPI 配置 schema
+const OpenapiConfigSchema = z.object({
+  name: z.string(),
+  url: z.string().url(),
+  authType: z.enum(['none', 'api-key', 'bearer', 'basic']).default('none'),
+  authToken: z.string().optional(),
+  authVar: z.string().default('Authorization'),
+  authLocation: z.enum(['header', 'query', 'cookie']).default('header'),
+});
+
 // 完整配置 schema
 const ConfigSchema = z.object({
   mcps: z.array(McpConfigSchema),
+  openapis: z.array(OpenapiConfigSchema),
   llm: LlmConfigSchema,
   filter: FilterConfigSchema,
   router: RouterConfigSchema,
@@ -50,6 +61,7 @@ export type McpConfig = z.infer<typeof McpConfigSchema>;
 export type LlmConfig = z.infer<typeof LlmConfigSchema>;
 export type FilterConfig = z.infer<typeof FilterConfigSchema>;
 export type RouterConfig = z.infer<typeof RouterConfigSchema>;
+export type OpenapiConfig = z.infer<typeof OpenapiConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
 
 /**
@@ -94,7 +106,10 @@ export function loadConfig(): Config {
     model: process.env.ROUTER_MODEL || undefined,
   };
 
-  return { mcps, llm, filter, router };
+  // 解析 OpenAPI 配置
+  const openapis = parseOpenapiConfig();
+
+  return { mcps, openapis, llm, filter, router };
 }
 
 /**
@@ -179,11 +194,48 @@ function parseLegacyMcpConfig(): McpConfig[] {
 }
 
 /**
+ * 解析 OpenAPI 配置
+ * OPENAPI_1_NAME, OPENAPI_1_URL, OPENAPI_1_AUTH_TYPE, ...
+ */
+function parseOpenapiConfig(): OpenapiConfig[] {
+  const openapis: OpenapiConfig[] = [];
+  
+  for (let i = 1; i <= 20; i++) {
+    const prefix = `OPENAPI_${i}_`;
+    const name = process.env[`${prefix}NAME`];
+    
+    if (!name) continue;
+    
+    const url = process.env[`${prefix}URL`];
+    if (!url) {
+      console.warn(`[WARN] OPENAPI_${i} 配置了 NAME 但缺少 URL，跳过`);
+      continue;
+    }
+    
+    const authType = process.env[`${prefix}AUTH_TYPE`] as 'none' | 'api-key' | 'bearer' | 'basic' | undefined;
+    const authToken = process.env[`${prefix}AUTH_TOKEN`];
+    const authVar = process.env[`${prefix}AUTH_VAR`] || 'Authorization';
+    const authLocation = process.env[`${prefix}AUTH_LOCATION`] as 'header' | 'query' | 'cookie' | undefined;
+    
+    openapis.push({
+      name,
+      url,
+      authType: authType || 'none',
+      authToken,
+      authVar,
+      authLocation: authLocation || 'header',
+    });
+  }
+  
+  return openapis;
+}
+
+/**
  * 验证配置
  */
 export function validateConfig(config: Config): void {
-  if (config.mcps.length === 0) {
-    throw new Error('至少需要配置一个 MCP 服务。设置 MCP_URL 和 MCP_NAME 环境变量。');
+  if (config.mcps.length === 0 && config.openapis.length === 0) {
+    throw new Error('至少需要配置一个 MCP 或 OpenAPI 工具源。');
   }
 
   for (const mcp of config.mcps) {

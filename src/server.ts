@@ -9,10 +9,11 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { CodeModeUtcpClient } from '@utcp/code-mode';
+import '@utcp/http';  // 自动注册 HTTP 协议
 import { McpCallTemplateSerializer } from '@utcp/mcp';
 import type { Tool } from '@utcp/sdk';
 import OpenAI from 'openai';
-import type { Config, McpConfig } from './config.js';
+import type { Config, McpConfig, OpenapiConfig } from './config.js';
 import { LlmFilter } from './llm-filter.js';
 
 interface ToolSummary {
@@ -45,7 +46,7 @@ export class GatewayServer {
     this.server = new Server(
       { 
         name: 'universal-tools', 
-        version: '0.1.23',
+        version: '0.1.24',
       },
       { capabilities: { tools: {} } }
     );
@@ -139,6 +140,11 @@ export class GatewayServer {
         await this.registerMcp(mcp, this.utcpClient);
       }
 
+      // 注册配置的 OpenAPI 服务
+      for (const openapi of this.config.openapis) {
+        await this.registerOpenapi(openapi, this.utcpClient);
+      }
+
       // 生成能力摘要
       await this.updateCapabilitySummary();
     }
@@ -228,6 +234,49 @@ export class GatewayServer {
 
     await client.registerManual(template);
     console.error(`[Gateway] Registered MCP: ${mcp.name}`);
+  }
+
+  /**
+   * 注册 OpenAPI 工具源
+   */
+  private async registerOpenapi(openapi: OpenapiConfig, client: CodeModeUtcpClient): Promise<void> {
+    try {
+      // 构建认证配置
+      let auth: any = undefined;
+      if (openapi.authType !== 'none' && openapi.authToken) {
+        if (openapi.authType === 'api-key' || openapi.authType === 'bearer') {
+          auth = {
+            auth_type: 'api_key',
+            api_key: openapi.authType === 'bearer' ? `Bearer ${openapi.authToken}` : openapi.authToken,
+            var_name: openapi.authVar,
+            location: openapi.authLocation,
+          };
+        } else if (openapi.authType === 'basic') {
+          // basic 认证需要 username:password 格式
+          const [username, password] = openapi.authToken.split(':');
+          auth = {
+            auth_type: 'basic',
+            username: username || '',
+            password: password || '',
+          };
+        }
+      }
+
+      // 构建 HTTP CallTemplate
+      const template = {
+        name: openapi.name,
+        call_template_type: 'http' as const,
+        http_method: 'GET' as const,
+        url: openapi.url,
+        content_type: 'application/json',
+        auth,
+      };
+
+      await client.registerManual(template);
+      console.error(`[Gateway] Registered OpenAPI: ${openapi.name} from ${openapi.url}`);
+    } catch (error) {
+      console.error(`[Gateway] Failed to register OpenAPI: ${openapi.name}`, error);
+    }
   }
 
   /**
