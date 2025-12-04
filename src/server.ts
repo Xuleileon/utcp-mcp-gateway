@@ -219,6 +219,7 @@ export class GatewayServer {
           transport: 'stdio' as const,
           command: mcp.command!,
           args: mcp.args || [],
+          ...(mcp.env && { env: { ...process.env, ...mcp.env } }),
         };
 
     const serializer = new McpCallTemplateSerializer();

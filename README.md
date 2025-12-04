@@ -106,7 +106,27 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 }
 ```
 
-### Mode 2: stdio MCP (Local)
+### Mode 2: HTTP MCP with Authentication
+
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "npx",
+      "args": ["-y", "utcp-mcp-gateway"],
+      "env": {
+        "MCP_URL": "https://api.example.com/mcp",
+        "MCP_NAME": "example-api",
+        "MCP_AUTH_TYPE": "bearer",
+        "MCP_AUTH_TOKEN": "your-api-token-here",
+        "LLM_API_KEY": "sk-xxx"
+      }
+    }
+  }
+}
+```
+
+### Mode 3: stdio MCP (Local)
 
 ```json
 {
@@ -141,6 +161,10 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 | `MCP_ARGS` | stdio mode | Arguments (comma-separated) |
 | `MCP_NAME` | ✅ | MCP namespace |
 | `MCP_TRANSPORT` | No | `http` (default) or `stdio` |
+| `MCP_N_ENV_JSON` | No | Environment variables for MCP N (JSON format, numbered style) |
+| `MCP_ENV_JSON` | No | Environment variables for MCP (semicolon style, JSON format) |
+| `MCP_AUTH_TYPE` | No | HTTP auth type: `none`, `bearer`, or `api-key` |
+| `MCP_AUTH_TOKEN` | No | Authentication token for HTTP MCP |
 | `LLM_API_KEY` | For filtering | Any OpenAI-compatible API key |
 | `LLM_BASE_URL` | For filtering | API endpoint (default: OpenAI) |
 | `LLM_MODEL` | For filtering | Model name (default: gpt-4o-mini) |
@@ -225,11 +249,17 @@ Use numbered environment variables for clear configuration:
       "env": {
         "MCP_1_NAME": "context7",
         "MCP_1_URL": "https://mcp.context7.com/mcp",
-        
+
         "MCP_2_NAME": "filesystem",
         "MCP_2_COMMAND": "npx",
         "MCP_2_ARGS": "-y,@anthropic/mcp-server-filesystem,/path/to/dir",
-        
+
+        "MCP_3_NAME": "minimax",
+        "MCP_3_TRANSPORT": "stdio",
+        "MCP_3_COMMAND": "uvx",
+        "MCP_3_ARGS": "minimax-coding-plan-mcp,-y",
+        "MCP_3_ENV_JSON": "{\"MINIMAX_API_KEY\":\"API KEY\",\"MINIMAX_API_HOST\":\"https://api.minimax.io\"}",
+
         "LLM_API_KEY": "sk-xxx",
         "MAX_RESPONSE_CHARS": "10000"
       }
@@ -241,6 +271,8 @@ Use numbered environment variables for clear configuration:
 **Numbered variables:**
 - `MCP_1_NAME`, `MCP_1_URL` - First MCP (HTTP mode)
 - `MCP_2_NAME`, `MCP_2_COMMAND`, `MCP_2_ARGS` - Second MCP (stdio mode)
+- `MCP_3_*` - Third MCP with custom environment variables
+- `MCP_N_ENV_JSON` - Environment variables for MCP N (JSON format)
 - Up to `MCP_20_*` supported
 
 ### Multiple MCPs (Alternative: Semicolon Style)
@@ -249,10 +281,17 @@ Use numbered environment variables for clear configuration:
 {
   "env": {
     "MCP_URL": "https://mcp.context7.com/mcp;https://mcp.deepwiki.com/mcp",
-    "MCP_NAME": "context7;deepwiki"
+    "MCP_NAME": "context7;deepwiki",
+    "MCP_COMMAND": ";npx",
+    "MCP_ARGS": ";@anthropic/mcp-server-filesystem,/path/to/dir",
+    "MCP_ENV_JSON": "{\"MINIMAX_API_KEY\":\"API KEY\"};"
   }
 }
 ```
+
+**Semicolon-separated variables:**
+- Values separated by semicolons (`;`) for multiple MCPs
+- `MCP_ENV_JSON` - Environment variables for stdio mode MCPs (JSON format, one per MCP)
 
 ### LLM Settings
 
@@ -407,7 +446,27 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 }
 ```
 
-### 模式 2：stdio MCP（本地）
+### 模式 2：带认证的 HTTP MCP
+
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "npx",
+      "args": ["-y", "utcp-mcp-gateway"],
+      "env": {
+        "MCP_URL": "https://api.example.com/mcp",
+        "MCP_NAME": "example-api",
+        "MCP_AUTH_TYPE": "bearer",
+        "MCP_AUTH_TOKEN": "your-api-token-here",
+        "LLM_API_KEY": "sk-xxx"
+      }
+    }
+  }
+}
+```
+
+### 模式 3：stdio MCP（本地）
 
 ```json
 {
@@ -442,6 +501,10 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 | `MCP_ARGS` | stdio 模式 | 参数（逗号分隔）|
 | `MCP_NAME` | ✅ | MCP 命名空间 |
 | `MCP_TRANSPORT` | 否 | `http`（默认）或 `stdio` |
+| `MCP_N_ENV_JSON` | 否 | 第 N 个 MCP 的环境变量（JSON 格式，编号方式）|
+| `MCP_ENV_JSON` | 否 | MCP 环境变量（JSON 格式，分号方式）|
+| `MCP_AUTH_TYPE` | 否 | HTTP 认证类型：`none`、`bearer` 或 `api-key` |
+| `MCP_AUTH_TOKEN` | 否 | HTTP MCP 认证令牌 |
 | `LLM_API_KEY` | 过滤用 | 任意 OpenAI 兼容的 API Key |
 | `LLM_BASE_URL` | 过滤用 | API 端点（默认 OpenAI）|
 | `LLM_MODEL` | 过滤用 | 模型名称（默认 gpt-4o-mini）|
@@ -526,11 +589,17 @@ MCP_NAME=context7
       "env": {
         "MCP_1_NAME": "context7",
         "MCP_1_URL": "https://mcp.context7.com/mcp",
-        
+
         "MCP_2_NAME": "filesystem",
         "MCP_2_COMMAND": "npx",
         "MCP_2_ARGS": "-y,@anthropic/mcp-server-filesystem,/path/to/dir",
-        
+
+        "MCP_3_NAME": "minimax",
+        "MCP_3_TRANSPORT": "stdio",
+        "MCP_3_COMMAND": "uvx",
+        "MCP_3_ARGS": "minimax-coding-plan-mcp,-y",
+        "MCP_3_ENV_JSON": "{\"MINIMAX_API_KEY\":\"API KEY\",\"MINIMAX_API_HOST\":\"https://api.minimax.io\"}",
+
         "LLM_API_KEY": "sk-xxx",
         "MAX_RESPONSE_CHARS": "10000"
       }
@@ -542,6 +611,8 @@ MCP_NAME=context7
 **编号变量：**
 - `MCP_1_NAME`, `MCP_1_URL` - 第一个 MCP（HTTP 模式）
 - `MCP_2_NAME`, `MCP_2_COMMAND`, `MCP_2_ARGS` - 第二个 MCP（stdio 模式）
+- `MCP_3_*` - 第三个 MCP（包含自定义环境变量）
+- `MCP_N_ENV_JSON` - 第 N 个 MCP 的环境变量（JSON 格式）
 - 最多支持 `MCP_20_*`
 
 ### 多个 MCP（备选：分号方式）
@@ -550,10 +621,17 @@ MCP_NAME=context7
 {
   "env": {
     "MCP_URL": "https://mcp.context7.com/mcp;https://mcp.deepwiki.com/mcp",
-    "MCP_NAME": "context7;deepwiki"
+    "MCP_NAME": "context7;deepwiki",
+    "MCP_COMMAND": ";npx",
+    "MCP_ARGS": ";@anthropic/mcp-server-filesystem,/path/to/dir",
+    "MCP_ENV_JSON": "{\"MINIMAX_API_KEY\":\"API KEY\"};"
   }
 }
 ```
+
+**分号分隔变量：**
+- 使用分号（`;`）分隔多个 MCP 的值
+- `MCP_ENV_JSON` - stdio 模式 MCP 的环境变量（JSON 格式，每个 MCP 一个）
 
 ### LLM 配置
 

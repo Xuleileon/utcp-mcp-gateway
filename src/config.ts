@@ -15,6 +15,8 @@ const McpConfigSchema = z.object({
   // 认证
   authType: z.enum(['none', 'bearer', 'api-key']).default('none'),
   authToken: z.string().optional(),
+  // 环境变量
+  env: z.record(z.string()).optional(),
 });
 
 // LLM 配置 schema
@@ -132,10 +134,35 @@ function parseNumberedMcpConfig(): McpConfig[] {
     const transport = process.env[`${prefix}TRANSPORT`] as 'http' | 'stdio' | undefined;
     const authType = process.env[`${prefix}AUTH_TYPE`] as 'none' | 'bearer' | 'api-key' | undefined;
     const authToken = process.env[`${prefix}AUTH_TOKEN`];
-    
+    const envJson = process.env[`${prefix}ENV_JSON`];
+
     // 自动判断 transport 类型
     const isStdio = transport === 'stdio' || !!command;
-    
+
+    // 解析环境变量 JSON
+    let env: Record<string, string> | undefined;
+    if (envJson) {
+      try {
+        const parsed = JSON.parse(envJson);
+        // 验证解析结果是否为有效的对象，且所有值都是字符串
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          env = {};
+          for (const [key, value] of Object.entries(parsed)) {
+            if (typeof value === 'string') {
+              env[key] = value;
+            } else {
+              console.warn(`[WARN] MCP_${i}_ENV_JSON contains non-string value for key "${key}" (type: ${typeof value}), skipping`);
+            }
+          }
+        } else {
+          console.warn(`[WARN] MCP_${i}_ENV_JSON is not a valid object, got: ${typeof parsed}. MCP server will start without custom environment variables.`);
+        }
+      } catch (e) {
+        const error = e instanceof Error ? e.message : String(e);
+        console.warn(`[WARN] Failed to parse MCP_${i}_ENV_JSON: ${error}. Value: ${envJson}. MCP server will start without custom environment variables.`);
+      }
+    }
+
     mcps.push({
       name,
       url,
@@ -144,9 +171,10 @@ function parseNumberedMcpConfig(): McpConfig[] {
       args: argsStr ? argsStr.split(',') : undefined,
       authType: authType || 'none',
       authToken,
+      env,
     });
   }
-  
+
   return mcps;
 }
 
@@ -164,6 +192,7 @@ function parseLegacyMcpConfig(): McpConfig[] {
   // stdio 模式配置
   const mcpCommands = process.env.MCP_COMMAND?.split(';') || [];
   const mcpArgsArray = process.env.MCP_ARGS?.split(';') || [];
+  const mcpEnvJsons = process.env.MCP_ENV_JSON?.split(';') || [];
 
   // 确定 MCP 数量
   const mcpCount = Math.max(mcpUrls.length, mcpCommands.length, mcpNames.length);
@@ -178,7 +207,32 @@ function parseLegacyMcpConfig(): McpConfig[] {
     
     const name = mcpNames[i];
     if (!name) continue; // 跳过没有名称的配置
-    
+
+    // 解析环境变量 JSON
+    let env: Record<string, string> | undefined;
+    const envJson = mcpEnvJsons[i];
+    if (envJson) {
+      try {
+        const parsed = JSON.parse(envJson);
+        // 验证解析结果是否为有效的对象，且所有值都是字符串
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          env = {};
+          for (const [key, value] of Object.entries(parsed)) {
+            if (typeof value === 'string') {
+              env[key] = value;
+            } else {
+              console.warn(`[WARN] MCP_ENV_JSON[${i}] contains non-string value for key "${key}" (type: ${typeof value}), skipping`);
+            }
+          }
+        } else {
+          console.warn(`[WARN] MCP_ENV_JSON[${i}] is not a valid object, got: ${typeof parsed}. MCP server will start without custom environment variables.`);
+        }
+      } catch (e) {
+        const error = e instanceof Error ? e.message : String(e);
+        console.warn(`[WARN] Failed to parse MCP_ENV_JSON[${i}]: ${error}. Value: ${envJson}. MCP server will start without custom environment variables.`);
+      }
+    }
+
     mcps.push({
       url: mcpUrls[i],
       name,
@@ -187,6 +241,7 @@ function parseLegacyMcpConfig(): McpConfig[] {
       args: mcpArgsArray[i]?.split(','),
       authType: (mcpAuthTypes[i] || 'none') as 'none' | 'bearer' | 'api-key',
       authToken: mcpAuthTokens[i],
+      env,
     });
   }
   
