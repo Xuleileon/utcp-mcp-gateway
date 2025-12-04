@@ -37,6 +37,7 @@
 - ✅ **Claude Skills alternative** for your MCP setup
 - ✅ **Better MCP tool management** without context overload
 - ✅ **Progressive tool discovery** — load tools on demand
+- ✅ **OpenAPI/Swagger to tools** — register REST APIs as tools
 - ✅ **MCP token optimization** — reduce 90%+ token waste
 - ✅ **MCP response filtering** — smart summarization
 
@@ -74,6 +75,7 @@ Code Mode:    User → LLM writes code → Execute all at once → Result
 | Feature | Description |
 |---------|-------------|
 | 🔌 **Universal MCP** | Connect any HTTP or stdio MCP server |
+| 📜 **OpenAPI Support** | Register REST APIs directly from OpenAPI/Swagger specs |
 | 🧠 **LLM Filtering** | Intelligent summarization (97% response reduction!) |
 | 🔍 **Progressive Discovery** | `search_tools` - find tools without loading all 500 definitions |
 | ⚡ **Code Mode** | Execute TypeScript tool chains in one call |
@@ -282,14 +284,16 @@ Use numbered environment variables for clear configuration:
 Register REST APIs directly from OpenAPI/Swagger specs:
 
 ```bash
-OPENAPI_1_NAME=petstore
-OPENAPI_1_URL=https://petstore.swagger.io/v2/swagger.json
+# Example: APIs.guru (public API directory)
+OPENAPI_1_NAME=apisguru
+OPENAPI_1_URL=https://api.apis.guru/v2/openapi.yaml
 
+# Example with authentication
 OPENAPI_2_NAME=my_api
 OPENAPI_2_URL=https://api.example.com/openapi.json
 OPENAPI_2_AUTH_TYPE=api-key
 OPENAPI_2_AUTH_TOKEN=sk-xxx
-OPENAPI_2_AUTH_VAR=Authorization
+OPENAPI_2_AUTH_VAR=X-Api-Key
 OPENAPI_2_AUTH_LOCATION=header
 ```
 
@@ -308,6 +312,10 @@ OPENAPI_2_AUTH_LOCATION=header
 - Tool name = operationId from OpenAPI spec
 - Tool description = summary or description from OpenAPI spec
 - Supports API Key, Bearer, Basic, and OAuth2 authentication
+
+**Requirements:**
+- Each API operation must have an `operationId` (operations without it are skipped)
+- File upload parameters (`type: file`) are not supported by UTCP SDK
 
 ---
 
@@ -330,6 +338,7 @@ OPENAPI_2_AUTH_LOCATION=header
 - ✅ **Claude Skills 替代方案** — 用于你的 MCP 配置
 - ✅ **更好的 MCP 工具管理** — 无上下文过载
 - ✅ **渐进式工具发现** — 按需加载工具
+- ✅ **OpenAPI 转工具** — 直接从 OpenAPI/Swagger 注册 REST API
 - ✅ **MCP Token 优化** — 减少 90%+ Token 浪费
 - ✅ **MCP 响应过滤** — 智能摘要
 
@@ -367,6 +376,7 @@ Code Mode:  用户 → LLM 写代码 → 一次执行全部 → 结果
 | 功能 | 说明 |
 |------|------|
 | 🔌 **通用 MCP** | 连接任意 HTTP 或 stdio MCP |
+| 📜 **OpenAPI 支持** | 直接从 OpenAPI/Swagger 规范注册 REST API |
 | 🧠 **LLM 过滤** | 智能摘要（响应缩小 97%！）|
 | 🔍 **渐进式发现** | `search_tools` - 按需搜索，无需加载全部 500 个工具 |
 | ⚡ **Code Mode** | 一次调用执行 TypeScript 代码链 |
@@ -575,14 +585,16 @@ MCP_NAME=context7
 直接从 OpenAPI/Swagger 规范注册 REST API：
 
 ```bash
-OPENAPI_1_NAME=petstore
-OPENAPI_1_URL=https://petstore.swagger.io/v2/swagger.json
+# 示例：APIs.guru（公开的 API 目录）
+OPENAPI_1_NAME=apisguru
+OPENAPI_1_URL=https://api.apis.guru/v2/openapi.yaml
 
+# 带认证的示例
 OPENAPI_2_NAME=my_api
 OPENAPI_2_URL=https://api.example.com/openapi.json
 OPENAPI_2_AUTH_TYPE=api-key
 OPENAPI_2_AUTH_TOKEN=sk-xxx
-OPENAPI_2_AUTH_VAR=Authorization
+OPENAPI_2_AUTH_VAR=X-Api-Key
 OPENAPI_2_AUTH_LOCATION=header
 ```
 
@@ -601,6 +613,10 @@ OPENAPI_2_AUTH_LOCATION=header
 - 工具名 = OpenAPI 规范中的 operationId
 - 工具描述 = OpenAPI 规范中的 summary 或 description
 - 支持 API Key、Bearer、Basic 和 OAuth2 认证
+
+**注意事项：**
+- API 操作必须有 `operationId`（没有的会被跳过）
+- 文件上传参数（`type: file`）不被 UTCP SDK 支持
 
 ---
 
