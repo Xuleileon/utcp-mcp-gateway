@@ -27,7 +27,7 @@ export class GatewayServer {
     this.server = new Server(
       { 
         name: 'universal-tools', 
-        version: '0.1.18',
+        version: '0.1.19',
       },
       { capabilities: { tools: {} } }
     );
@@ -71,43 +71,7 @@ export class GatewayServer {
               required: ['tool_name'],
             },
           },
-          {
-            name: 'call_tool_chain',
-            description: `执行 TypeScript 代码链。工具已注册为全局对象，直接用 await manual.tool(args) 调用。
-
-## 可用运行时变量
-- __interfaces: 所有工具的 TypeScript 接口定义
-- __getToolInterface(name): 获取特定工具接口
-- console.log/error/warn: 输出会被捕获并返回
-
-## 建议流程
-1. 先 console.log(__interfaces) 了解接口
-2. 调用工具并 console.log(result) 查看返回结构
-3. 根据实际结构处理数据
-
-## filter_response 参数使用场景
-- false（默认）：保留原始 JSON 结构，适合后续代码处理
-- true：使用 LLM 摘要，适合结果直接展示给用户或输出过大时
-
-## 示例
-\`\`\`typescript
-// 不要用 import/require，工具已是全局对象
-const result = await context7.context7_resolve_library_id({ libraryName: "react" });
-console.log(result);  // 先看结构
-return result;  // 再处理
-\`\`\``,
-            inputSchema: {
-              type: 'object',
-              properties: {
-                code: { type: 'string', description: 'TypeScript 代码，使用 await manual.tool(args) 调用工具' },
-                timeout: { type: 'number', description: '超时时间(ms)', default: 30000 },
-                max_output_size: { type: 'number', description: '最大输出字符数', default: 5000 },
-                filter_response: { type: 'boolean', description: '是否使用 LLM 智能摘要（默认 false）', default: false },
-                purpose: { type: 'string', description: '用户的请求目的（启用 filter_response 时，LLM 会根据此目的提取相关信息）' },
-              },
-              required: ['code'],
-            },
-          },
+          this.buildCallToolChainDefinition(),
         ],
       };
     });
@@ -306,6 +270,78 @@ return result;  // 再处理
           tools: tools.map(t => this.utcpNameToTsName(t.name))
         }, null, 2),
       }],
+    };
+  }
+
+  /**
+   * 动态生成 call_tool_chain 工具定义
+   * 当 FORCE_LLM_FILTER=true 时，隐藏 filter_response 参数
+   */
+  private buildCallToolChainDefinition() {
+    const forceLlmFilter = this.config.filter.forceLlmFilter;
+    
+    // 基础描述
+    let description = `执行 TypeScript 代码链。工具已注册为全局对象，直接用 await manual.tool(args) 调用。
+
+## 可用运行时变量
+- __interfaces: 所有工具的 TypeScript 接口定义
+- __getToolInterface(name): 获取特定工具接口
+- console.log/error/warn: 输出会被捕获并返回
+
+## 建议流程
+1. 先 console.log(__interfaces) 了解接口
+2. 调用工具并 console.log(result) 查看返回结构
+3. 根据实际结构处理数据
+`;
+
+    // 根据是否强制过滤添加不同说明
+    if (forceLlmFilter) {
+      description += `
+## ⚡ 当前已强制开启 LLM 过滤
+所有响应都会自动经过 LLM 智能摘要，请提供 purpose 参数以获得更精准的结果。
+`;
+    } else {
+      description += `
+## filter_response 参数使用场景
+- false（默认）：保留原始 JSON 结构，适合后续代码处理
+- true：使用 LLM 摘要，适合结果直接展示给用户或输出过大时
+`;
+    }
+
+    description += `
+## 示例
+\`\`\`typescript
+// 不要用 import/require，工具已是全局对象
+const result = await context7.context7_resolve_library_id({ libraryName: "react" });
+console.log(result);  // 先看结构
+return result;  // 再处理
+\`\`\``;
+
+    // 基础属性
+    const properties: Record<string, unknown> = {
+      code: { type: 'string', description: 'TypeScript 代码，使用 await manual.tool(args) 调用工具' },
+      timeout: { type: 'number', description: '超时时间(ms)', default: 30000 },
+      max_output_size: { type: 'number', description: '最大输出字符数', default: 5000 },
+      purpose: { type: 'string', description: '用户的请求目的（LLM 会根据此目的提取相关信息）' },
+    };
+
+    // 只有未强制过滤时才暴露 filter_response 参数
+    if (!forceLlmFilter) {
+      properties.filter_response = { 
+        type: 'boolean', 
+        description: '是否使用 LLM 智能摘要（默认 false）', 
+        default: false 
+      };
+    }
+
+    return {
+      name: 'call_tool_chain',
+      description,
+      inputSchema: {
+        type: 'object',
+        properties,
+        required: ['code'],
+      },
     };
   }
 

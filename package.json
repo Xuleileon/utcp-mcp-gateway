@@ -1,6 +1,6 @@
 {
   "name": "utcp-mcp-gateway",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "description": "UTCP Gateway - Universal MCP proxy with LLM-powered response filtering",
   "type": "module",
   "main": "./dist/index.js",
