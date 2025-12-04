@@ -32,16 +32,24 @@ const FilterConfigSchema = z.object({
   forceLlmFilter: z.boolean().default(false),
 });
 
+// 路由配置 schema
+const RouterConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  model: z.string().optional(),  // 不填则复用 LLM_MODEL
+});
+
 // 完整配置 schema
 const ConfigSchema = z.object({
   mcps: z.array(McpConfigSchema),
   llm: LlmConfigSchema,
   filter: FilterConfigSchema,
+  router: RouterConfigSchema,
 });
 
 export type McpConfig = z.infer<typeof McpConfigSchema>;
 export type LlmConfig = z.infer<typeof LlmConfigSchema>;
 export type FilterConfig = z.infer<typeof FilterConfigSchema>;
+export type RouterConfig = z.infer<typeof RouterConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
 
 /**
@@ -80,7 +88,13 @@ export function loadConfig(): Config {
     forceLlmFilter: process.env.FORCE_LLM_FILTER?.toLowerCase() === 'true',
   };
 
-  return { mcps, llm, filter };
+  // 解析路由配置
+  const router: RouterConfig = {
+    enabled: process.env.ENABLE_LLM_SEARCH?.toLowerCase() !== 'false',
+    model: process.env.ROUTER_MODEL || undefined,
+  };
+
+  return { mcps, llm, filter, router };
 }
 
 /**

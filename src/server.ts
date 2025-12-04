@@ -10,8 +10,15 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { CodeModeUtcpClient } from '@utcp/code-mode';
 import { McpCallTemplateSerializer } from '@utcp/mcp';
+import type { Tool } from '@utcp/sdk';
+import OpenAI from 'openai';
 import type { Config, McpConfig } from './config.js';
 import { LlmFilter } from './llm-filter.js';
+
+interface ToolSummary {
+  name: string;
+  brief: string;
+}
 
 export class GatewayServer {
   private server: Server;
@@ -19,15 +26,26 @@ export class GatewayServer {
   private llmFilter: LlmFilter;
   private config: Config;
   private capabilitySummary: string = '';
+  private toolSummaries: ToolSummary[] = [];
+  private toolFullDefs: Map<string, Tool> = new Map();
+  private routerClient: OpenAI | null = null;
 
   constructor(config: Config) {
     this.config = config;
     this.llmFilter = new LlmFilter(config.llm, config.filter);
 
+    // 初始化路由 LLM 客户端（复用 LLM 配置）
+    if (config.llm.apiKey && config.router.enabled) {
+      this.routerClient = new OpenAI({
+        apiKey: config.llm.apiKey,
+        baseURL: config.llm.baseUrl,
+      });
+    }
+
     this.server = new Server(
       { 
         name: 'universal-tools', 
-        version: '0.1.19',
+        version: '0.1.20',
       },
       { capabilities: { tools: {} } }
     );
@@ -128,7 +146,7 @@ export class GatewayServer {
   }
 
   /**
-   * 从已注册的工具生成能力摘要
+   * 从已注册的工具生成能力摘要和工具缓存
    */
   private async updateCapabilitySummary(): Promise<void> {
     if (!this.utcpClient) return;
@@ -136,10 +154,24 @@ export class GatewayServer {
     const tools = await this.utcpClient.getTools();
     if (tools.length === 0) {
       this.capabilitySummary = '';
+      this.toolSummaries = [];
+      this.toolFullDefs.clear();
       return;
     }
 
-    // 按 manual 分组
+    // 缓存完整定义和生成精简摘要
+    this.toolSummaries = [];
+    this.toolFullDefs.clear();
+    for (const tool of tools) {
+      const tsName = this.utcpNameToTsName(tool.name);
+      this.toolFullDefs.set(tsName, tool);
+      this.toolSummaries.push({
+        name: tsName,
+        brief: tool.description?.slice(0, 100) || '',
+      });
+    }
+
+    // 按 manual 分组（用于能力摘要）
     const byManual = new Map<string, Array<{ name: string; description: string }>>();
     for (const tool of tools) {
       // tool.name 格式: "manual.server.tool" 或 "manual.tool"
@@ -156,7 +188,7 @@ export class GatewayServer {
       });
     }
 
-    // 生成摘要
+    // 生成能力摘要
     const lines: string[] = ['已连接服务:'];
     for (const [manual, toolList] of byManual) {
       // 取前 2 个工具名
@@ -167,6 +199,7 @@ export class GatewayServer {
 
     this.capabilitySummary = lines.join('\n');
     console.error(`[Gateway] 能力摘要已生成:\n${this.capabilitySummary}`);
+    console.error(`[Gateway] 已缓存 ${this.toolSummaries.length} 个工具摘要`);
   }
 
   private async registerMcp(mcp: McpConfig, client: CodeModeUtcpClient): Promise<void> {
@@ -207,8 +240,14 @@ export class GatewayServer {
 
   private async searchTools(query: string, limit = 10) {
     const client = await this.getUtcpClient();
-    const tools = await client.searchTools(query, limit);
     
+    // 如果启用了 LLM 路由且有客户端
+    if (this.config.router.enabled && this.routerClient && this.toolSummaries.length > 0) {
+      return this.llmSearchTools(query, limit, client);
+    }
+    
+    // 回退到原有的关键词搜索
+    const tools = await client.searchTools(query, limit);
     return {
       content: [{
         type: 'text',
@@ -221,6 +260,98 @@ export class GatewayServer {
         }, null, 2),
       }],
     };
+  }
+
+  /**
+   * 使用 LLM 智能搜索工具
+   */
+  private async llmSearchTools(query: string, limit: number, client: CodeModeUtcpClient) {
+    if (!this.routerClient) {
+      throw new Error('Router client not initialized');
+    }
+
+    // 构建精简摘要文本
+    const summaryText = this.toolSummaries
+      .map(t => `- ${t.name}: ${t.brief}`)
+      .join('\n');
+
+    const model = this.config.router.model || this.config.llm.model;
+    
+    try {
+      const response = await this.routerClient.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: `你是一个工具推荐专家。根据用户的需求，从可用工具列表中选择最相关的工具。
+
+可用工具：
+${summaryText}
+
+要求：
+1. 只返回工具名，用逗号分隔
+2. 最多返回 ${limit} 个工具
+3. 如果没有合适的工具，返回 "none"
+4. 只输出工具名，不要解释`
+          },
+          { role: 'user', content: query }
+        ],
+        max_tokens: 200,
+        temperature: 0,
+      });
+
+      const resultText = response.choices[0]?.message?.content || 'none';
+      console.error(`[Gateway] LLM 推荐结果: ${resultText}`);
+
+      if (resultText.toLowerCase().trim() === 'none') {
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({ tools: [], message: '未找到匹配的工具' }, null, 2),
+          }],
+        };
+      }
+
+      // 解析推荐的工具名
+      const recommendedNames = resultText
+        .split(',')
+        .map(n => n.trim())
+        .filter(n => n && n !== 'none');
+
+      // 获取推荐工具的完整定义
+      const recommendedTools = recommendedNames
+        .map(name => this.toolFullDefs.get(name))
+        .filter((t): t is Tool => t !== undefined);
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tools: recommendedTools.map(t => ({
+              name: this.utcpNameToTsName(t.name),
+              description: t.description,
+              typescript_interface: client.toolToTypeScriptInterface(t),
+            }))
+          }, null, 2),
+        }],
+      };
+    } catch (error) {
+      console.error('[Gateway] LLM 搜索失败，回退到关键词搜索:', error);
+      // 回退到原有搜索
+      const tools = await client.searchTools(query, limit);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tools: tools.map(t => ({
+              name: this.utcpNameToTsName(t.name),
+              description: t.description,
+              typescript_interface: client.toolToTypeScriptInterface(t),
+            }))
+          }, null, 2),
+        }],
+      };
+    }
   }
 
   private async toolInfo(toolName: string) {
@@ -260,6 +391,20 @@ export class GatewayServer {
   }
 
   private async listTools() {
+    // 优先使用缓存的精简摘要
+    if (this.toolSummaries.length > 0) {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tools: this.toolSummaries,
+            hint: '使用 tool_info(name) 获取完整接口定义'
+          }, null, 2),
+        }],
+      };
+    }
+    
+    // 回退到原有逻辑
     const client = await this.getUtcpClient();
     const tools = await client.getTools();
     
@@ -267,7 +412,11 @@ export class GatewayServer {
       content: [{
         type: 'text',
         text: JSON.stringify({
-          tools: tools.map(t => this.utcpNameToTsName(t.name))
+          tools: tools.map(t => ({
+            name: this.utcpNameToTsName(t.name),
+            brief: t.description?.slice(0, 100) || ''
+          })),
+          hint: '使用 tool_info(name) 获取完整接口定义'
         }, null, 2),
       }],
     };
