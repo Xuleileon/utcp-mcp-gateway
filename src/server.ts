@@ -27,7 +27,7 @@ export class GatewayServer {
     this.server = new Server(
       { 
         name: 'universal-tools', 
-        version: '0.1.17',
+        version: '0.1.18',
       },
       { capabilities: { tools: {} } }
     );

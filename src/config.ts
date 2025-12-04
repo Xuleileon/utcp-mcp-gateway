@@ -72,12 +72,12 @@ export function loadConfig(): Config {
     model: process.env.LLM_MODEL || 'gpt-4o-mini',
   };
 
-  // 解析过滤配置
+  // 解析过滤配置（布尔值不区分大小写）
   const filter: FilterConfig = {
-    enabled: process.env.ENABLE_LLM_FILTER !== 'false',
+    enabled: process.env.ENABLE_LLM_FILTER?.toLowerCase() !== 'false',
     maxResponseChars: parseInt(process.env.MAX_RESPONSE_CHARS || '10000', 10),
     summarizeThreshold: parseInt(process.env.SUMMARIZE_THRESHOLD || '5000', 10),
-    forceLlmFilter: process.env.FORCE_LLM_FILTER === 'true',
+    forceLlmFilter: process.env.FORCE_LLM_FILTER?.toLowerCase() === 'true',
   };
 
   return { mcps, llm, filter };
